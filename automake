@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+
+import sys
+import time
+import logging
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+import os
+import subprocess
+
+class AutomakeHandler(FileSystemEventHandler):
+  def __init__(self, command, sources):
+    self.__sources = sources
+    self.__command = str(command)
+
+  def __call__(self):
+    args = ['make', self.__command]
+    print('Calling: %s' % args)
+    try:
+      subprocess.check_output(args)
+    except subprocess.CalledProcessError as e:
+      print('Failure: %s' % e)
+
+  def __is_watched(self, src_path):
+    if os.path.exists(src_path):
+      return any([os.path.samefile(src_path, s) for s in self.__sources])
+    return False
+
+  def on_any_event(self, event):
+    if self.__is_watched(event.src_path):
+      self()
+
+def get_sources():
+  sources = []
+  with open('makefile', 'r') as f:
+    for line in f.readlines():
+      if ':' in line:
+        sources.extend(line.split(':')[1].split())
+  return [s.strip() for s in sources]
+
+def print_sources(sources):
+  source_files = [s for s in sources if os.path.isfile(s)]
+  source_dirs = [s for s in sources if os.path.isdir(s)]
+  if source_files:
+    print('Watched source files: %s' % source_files)
+  if source_dirs:
+    print('Watched source directories: %s' % source_dirs)
+
+def automake(args):
+  sources = get_sources()
+  print_sources(sources)
+  path = '.'
+  event_handler = AutomakeHandler(args.cmd, sources)
+  observer = Observer()
+  observer.schedule(event_handler, path, recursive=True)
+  observer.start()
+  try:
+      while True:
+          time.sleep(1)
+  except KeyboardInterrupt:
+      observer.stop()
+  observer.join()
+
+if __name__ == '__main__':
+  import argparse
+  parser = argparse.ArgumentParser(description='Runs make automatically on source file change.')
+  parser.add_argument('--cmd', default='all', help='make command (default "%(default)s")')
+  args = parser.parse_args()
+  automake(args)
