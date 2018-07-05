@@ -3,8 +3,13 @@
 import time
 import os
 from subprocess import PIPE, CalledProcessError, check_output
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+watchdog_imported = False
+try:
+  from watchdog.observers import Observer
+  from watchdog.events import FileSystemEventHandler
+  watchdog_imported = True
+except ImportError:
+  pass
 
 class AutomakeEventHandler(FileSystemEventHandler):
   def __init__(self, command, sources):
@@ -67,7 +72,11 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='Runs make automatically on source file change.')
   parser.add_argument('--cmd', default='all', help='make command (default "%(default)s")')
   args = parser.parse_args()
-  try:
-    automake(args)
-  except RuntimeError as e:
-    print(e)
+  if watchdog_imported:
+    try:
+      automake(args)
+    except RuntimeError as e:
+      print(e)
+  else:
+    print('Watchdog not available, please install it using pip: pip install watchdog')
+    print('See https://pythonhosted.org/watchdog/ if you encounter any installation problems.')
