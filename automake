@@ -15,6 +15,7 @@ class AutomakeEventHandler(FileSystemEventHandler):
   def __init__(self, command, sources):
     self.__sources = sources
     self.__command = str(command)
+    self()
 
   def __call__(self):
     args = ['make', self.__command]
