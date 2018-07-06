@@ -15,11 +15,26 @@ def printmsg(msg):
   print('automake: %s' % msg)
 
 class AutomakeEventHandler(FileSystemEventHandler):
-  def __init__(self, command, sources, debug):
+  def __init__(self, makefilename, command, debug):
+    self.__makefilename = makefilename
     self.__command = str(command)
     self.__debug = debug
-    self.__source_files = self.__get_source_files(sources)
-    self.__source_dirs = self.__get_source_dirs(sources)
+    self.__init()
+
+  def on_any_event(self, event):
+    if self.__debug:
+      printmsg(event)
+    if self.__is_watched(event.src_path):
+      self()
+    elif self.__is_makefile(event.src_path):
+      if self.__debug:
+        printmsg('Makefile change detected.')
+      self.__init()
+
+  def __init(self):
+    parser = MakefileParser(self.__makefilename, debug=self.__debug)
+    self.__source_files = self.__get_source_files(parser.sources)
+    self.__source_dirs = self.__get_source_dirs(parser.sources)
     self()
 
   def __get_source_files(self, sources):
@@ -49,18 +64,15 @@ class AutomakeEventHandler(FileSystemEventHandler):
       ret |= any([s in src_path for s in self.__source_dirs])
     return ret
 
-  def on_any_event(self, event):
-    if self.__debug:
-      printmsg(event)
-    if self.__is_watched(event.src_path):
-      self()
+  def __is_makefile(self, src_path):
+    return os.path.samefile(self.__makefilename, src_path)
 
 class MakefileParser(object):
-  def __init__(self, filename='Makefile', debug=False):
+  def __init__(self, makefilename, debug=False):
     self.__sources = []
     self.__variables = {}
     self.__debug = debug
-    self.__parse(filename)
+    self.__parse(makefilename)
     self.__expand_variables()
 
   @property
@@ -91,8 +103,7 @@ class MakefileParser(object):
       printmsg('Expanded variables: %s' % self.__sources)
 
 def automake(args):
-  parser = MakefileParser(debug=args.debug)
-  event_handler = AutomakeEventHandler(args.cmd, parser.sources, args.debug)
+  event_handler = AutomakeEventHandler(args.makefilename, args.cmd, args.debug)
   observer = Observer()
   observer.schedule(event_handler, '.', recursive=True)
   observer.start()
@@ -106,6 +117,7 @@ def automake(args):
 if __name__ == '__main__':
   import argparse
   parser = argparse.ArgumentParser(description='Runs make automatically on source file change.')
+  parser.add_argument('--makefilename', default='Makefile', help='Name of the makefile (default "%(default)s")')
   parser.add_argument('--cmd', default='all', help='make command (default "%(default)s")')
   parser.add_argument('--debug', action='store_true', help='Run in debug mode.')
   args = parser.parse_args()
