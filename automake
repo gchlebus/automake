@@ -11,6 +11,9 @@ try:
 except ImportError:
   pass
 
+def printmsg(msg):
+  print('automake: %s' % msg)
+
 class AutomakeEventHandler(FileSystemEventHandler):
   def __init__(self, command, sources, debug):
     self.__command = str(command)
@@ -22,22 +25,22 @@ class AutomakeEventHandler(FileSystemEventHandler):
   def __get_source_files(self, sources):
     source_files = [s for s in sources if os.path.isfile(s)]
     if source_files and self.__debug:
-      print('Watched files: %s' % source_files)
+      printmsg('Watched files: %s' % source_files)
     return source_files
 
   def __get_source_dirs(self, sources):
     source_dirs = [s for s in sources if os.path.isdir(s)]
     if source_dirs and self.__debug:
-      print('Watched directories : %s' % source_dirs)
+      printmsg('Watched directories : %s' % source_dirs)
     return source_dirs
 
   def __call__(self):
     args = ['make', self.__command]
-    print('Calling: %s' % args)
+    printmsg('Calling: %s' % args)
     try:
       check_output(args, stdin=PIPE)
     except CalledProcessError as e:
-      print('Failure: %s' % e)
+      printmsg('Failure: %s' % e)
 
   def __is_watched(self, src_path):
     ret = False
@@ -48,25 +51,48 @@ class AutomakeEventHandler(FileSystemEventHandler):
 
   def on_any_event(self, event):
     if self.__debug:
-      print(event)
+      printmsg(event)
     if self.__is_watched(event.src_path):
       self()
 
-def get_sources():
-  sources = []
-  filename = 'Makefile'
-  if os.path.exists(filename):
-    with open(filename, 'r') as f:
-      for line in f.readlines():
-        if ':' in line:
-          sources.extend(line.split(':')[1].split())
-    return [s.strip() for s in sources]
-  else:
-    raise RuntimeError('%s not found.' % filename)
+class MakefileParser(object):
+  def __init__(self, filename='Makefile', debug=False):
+    self.__sources = []
+    self.__variables = {}
+    self.__debug = debug
+    self.__parse(filename)
+    self.__expand_variables()
+
+  @property
+  def sources(self):
+    return self.__sources
+
+  def __parse(self, filename):
+    if os.path.exists(filename):
+      with open(filename, 'r') as f:
+        for line in f.readlines():
+          if ':' in line:
+            self.__sources.extend(line.split(':')[1].split())
+          if '=' in line:
+            k, v = line.split('=')
+            self.__variables[k] = v.strip()
+      self.__sources = [s.strip() for s in self.__sources]
+      if self.__debug:
+        printmsg('Parsed sources: %s' % self.__sources)
+        printmsg('Parsed variables: %s' % self.__variables)
+    else:
+      raise RuntimeError('%s not found.' % filename)
+
+  def __expand_variables(self):
+    for i in range(len(self.__sources)):
+      for k, v in self.__variables.items():
+        self.__sources[i] = self.__sources[i].replace('${%s}' % k, v)
+    if self.__debug:
+      printmsg('Expanded variables: %s' % self.__sources)
 
 def automake(args):
-  sources = get_sources()
-  event_handler = AutomakeEventHandler(args.cmd, sources, args.debug)
+  parser = MakefileParser(debug=args.debug)
+  event_handler = AutomakeEventHandler(args.cmd, parser.sources, args.debug)
   observer = Observer()
   observer.schedule(event_handler, '.', recursive=True)
   observer.start()
@@ -87,7 +113,7 @@ if __name__ == '__main__':
     try:
       automake(args)
     except RuntimeError as e:
-      print(e)
+      printmsg(e)
   else:
-    print('Watchdog not available, please install it using pip: pip install watchdog')
-    print('See https://pythonhosted.org/watchdog/ if you encounter any installation problems.')
+    printmsg('Watchdog not available, please install it using pip: pip install watchdog')
+    printmsg('See https://pythonhosted.org/watchdog/ if you encounter any installation problems.')
