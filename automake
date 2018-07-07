@@ -15,95 +15,109 @@ def printmsg(msg):
   print('automake: %s' % msg)
 
 class AutomakeEventHandler(FileSystemEventHandler):
-  def __init__(self, makefilename, command, debug):
-    self.__makefilename = makefilename
-    self.__command = str(command)
-    self.__debug = debug
-    self.__init()
-
-  def on_any_event(self, event):
-    if self.__debug:
-      printmsg(event)
-    if self.__is_watched(event.src_path):
-      self()
-    elif self.__is_makefile(event.src_path):
-      if self.__debug:
-        printmsg('Makefile change detected.')
-      self.__init()
-
-  def __init(self):
-    parser = MakefileParser(self.__makefilename, debug=self.__debug)
-    self.__source_files = self.__get_source_files(parser.sources)
-    self.__source_dirs = self.__get_source_dirs(parser.sources)
-    self()
-
-  def __get_source_files(self, sources):
-    source_files = [s for s in sources if os.path.isfile(s)]
-    if source_files and self.__debug:
-      printmsg('Watched files: %s' % ', '.join(source_files))
-    return source_files
-
-  def __get_source_dirs(self, sources):
-    source_dirs = [s for s in sources if os.path.isdir(s)]
-    if source_dirs and self.__debug:
-      printmsg('Watched directories : %s' % ', '.join(source_dirs))
-    return source_dirs
+  def __init__(self, makefilename, target, debug):
+    self.makefilename = makefilename
+    self.target = target
+    self.debug = debug
+    self.init()
 
   def __call__(self):
-    args = ['make', self.__command]
+    args = ['make', self.target]
     printmsg('Calling: %s' % ' '.join(args))
     try:
       check_output(args, stdin=PIPE)
     except CalledProcessError as e:
       printmsg('Failure: %s' % e)
 
-  def __is_watched(self, src_path):
+  def on_any_event(self, event):
+    if self.debug:
+      printmsg(event)
+    if self.is_watched(event.src_path):
+      self()
+    elif self.is_makefile(event.src_path):
+      if self.debug:
+        printmsg('Makefile change detected.')
+      self.init()
+
+  def init(self):
+    parser = MakefileParser(self.makefilename, self.target, debug=self.debug)
+    self.watched_files = self.get_files(parser.prerequisites)
+    self.watched_dirs = self.get_dirs(parser.prerequisites)
+    self()
+
+  def get_files(self, path_list):
+    files = [p for p in path_list if os.path.isfile(p)]
+    if files and self.debug:
+      printmsg('Watched files: %s' % ', '.join(files))
+    return files
+
+  def get_dirs(self, path_list):
+    dirs = [p for p in path_list if os.path.isdir(p)]
+    if dirs and self.debug:
+      printmsg('Watched directories : %s' % ', '.join(dirs))
+    return dirs
+
+  def is_watched(self, src_path):
     ret = False
     if os.path.exists(src_path):
-      ret |= any([os.path.samefile(src_path, s) for s in self.__source_files])
-      ret |= any([s in src_path for s in self.__source_dirs])
+      ret |= any([os.path.samefile(src_path, s) for s in self.watched_files])
+      ret |= any([s in src_path for s in self.watched_dirs])
     return ret
 
-  def __is_makefile(self, src_path):
-    return os.path.samefile(self.__makefilename, src_path)
+  def is_makefile(self, src_path):
+    return os.path.samefile(self.makefilename, src_path)
+
 
 class MakefileParser(object):
-  def __init__(self, makefilename, debug=False):
-    self.__sources = []
-    self.__variables = {}
-    self.__debug = debug
-    self.__parse(makefilename)
-    self.__expand_variables()
+  def __init__(self, makefilename, target='all', debug=False):
+    self.target = target
+    self.targets = {}
+    self.variables = {}
+    self.debug = debug
+    self.parse(makefilename)
+    if target not in self.targets:
+      raise RuntimeError('Target %s not found.' % target)
+    self.expand_variables()
+    self.prerequisites = self.resolve_dependencies(target)
 
-  @property
-  def sources(self):
-    return self.__sources
-
-  def __parse(self, filename):
+  def parse(self, filename):
     if os.path.exists(filename):
       with open(filename, 'r') as f:
         for line in f.readlines():
           if ':' in line:
-            self.__sources.extend(line.split(':')[1].split())
+            target, prerequisites = line.split(':')
+            self.targets[target.strip()] = prerequisites.strip().split()
           if '=' in line:
             k, v = line.split('=')
-            self.__variables[k] = v.strip()
-      self.__sources = [s.strip() for s in self.__sources]
-      if self.__debug:
-        printmsg('Parsed sources: %s' % ', '.join(self.__sources))
-        printmsg('Parsed variables: %s' % ', '.join(self.__variables))
+            self.variables[k] = v.strip()
+      if self.debug:
+        if self.targets:
+          printmsg('Parsed targets:')
+        for target, prerequisites in self.targets.items():
+          printmsg('  %s: %s' % (target, ', '.join(prerequisites)))
+        if self.variables:
+          printmsg('Parsed variables: %s' % ', '.join(self.variables))
     else:
       raise RuntimeError('%s not found.' % filename)
 
-  def __expand_variables(self):
-    for i in range(len(self.__sources)):
-      for k, v in self.__variables.items():
-        self.__sources[i] = self.__sources[i].replace('${%s}' % k, v)
-    if self.__debug:
-      printmsg('Expanded variables: %s' % ', '.join(self.__sources))
+  def expand_variables(self):
+    for target, prerequisites in self.targets.items():
+      for i in range(len(prerequisites)):
+        for varname, value in self.variables.items():
+          self.targets[target][i] = self.targets[target][i].replace('${%s}' % varname, value)
+
+  def resolve_dependencies(self, target):
+    prerequisites = []
+    for p in self.targets[target]:
+      if p in self.targets:
+        prerequisites.extend(self.resolve_dependencies(p))
+      else:
+        prerequisites.append(p)
+    return prerequisites
+
 
 def automake(args):
-  event_handler = AutomakeEventHandler(args.makefilename, args.cmd, args.debug)
+  event_handler = AutomakeEventHandler(args.makefilename, args.target, args.debug)
   observer = Observer()
   observer.schedule(event_handler, '.', recursive=True)
   observer.start()
@@ -118,7 +132,7 @@ if __name__ == '__main__':
   import argparse
   parser = argparse.ArgumentParser(description='Runs make automatically on source files change.')
   parser.add_argument('--makefilename', default='Makefile', help='Name of the makefile (default "%(default)s")')
-  parser.add_argument('--cmd', default='all', help='make command (default "%(default)s")')
+  parser.add_argument('--target', default='all', help='make target (default "%(default)s")')
   parser.add_argument('--debug', action='store_true', help='Run in debug mode.')
   args = parser.parse_args()
   if watchdog_imported:
