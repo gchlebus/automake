@@ -40,18 +40,18 @@ class AutomakeEventHandler(FileSystemEventHandler):
   def __get_source_files(self, sources):
     source_files = [s for s in sources if os.path.isfile(s)]
     if source_files and self.__debug:
-      printmsg('Watched files: %s' % source_files)
+      printmsg('Watched files: %s' % ', '.join(source_files))
     return source_files
 
   def __get_source_dirs(self, sources):
     source_dirs = [s for s in sources if os.path.isdir(s)]
     if source_dirs and self.__debug:
-      printmsg('Watched directories : %s' % source_dirs)
+      printmsg('Watched directories : %s' % ', '.join(source_dirs))
     return source_dirs
 
   def __call__(self):
     args = ['make', self.__command]
-    printmsg('Calling: %s' % args)
+    printmsg('Calling: %s' % ' '.join(args))
     try:
       check_output(args, stdin=PIPE)
     except CalledProcessError as e:
@@ -90,8 +90,8 @@ class MakefileParser(object):
             self.__variables[k] = v.strip()
       self.__sources = [s.strip() for s in self.__sources]
       if self.__debug:
-        printmsg('Parsed sources: %s' % self.__sources)
-        printmsg('Parsed variables: %s' % self.__variables)
+        printmsg('Parsed sources: %s' % ', '.join(self.__sources))
+        printmsg('Parsed variables: %s' % ', '.join(self.__variables))
     else:
       raise RuntimeError('%s not found.' % filename)
 
@@ -100,7 +100,7 @@ class MakefileParser(object):
       for k, v in self.__variables.items():
         self.__sources[i] = self.__sources[i].replace('${%s}' % k, v)
     if self.__debug:
-      printmsg('Expanded variables: %s' % self.__sources)
+      printmsg('Expanded variables: %s' % ', '.join(self.__sources))
 
 def automake(args):
   event_handler = AutomakeEventHandler(args.makefilename, args.cmd, args.debug)
@@ -116,7 +116,7 @@ def automake(args):
 
 if __name__ == '__main__':
   import argparse
-  parser = argparse.ArgumentParser(description='Runs make automatically on source file change.')
+  parser = argparse.ArgumentParser(description='Runs make automatically on source files change.')
   parser.add_argument('--makefilename', default='Makefile', help='Name of the makefile (default "%(default)s")')
   parser.add_argument('--cmd', default='all', help='make command (default "%(default)s")')
   parser.add_argument('--debug', action='store_true', help='Run in debug mode.')
