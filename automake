@@ -72,7 +72,6 @@ class AutomakeEventHandler(FileSystemEventHandler):
 
 class MakefileParser(object):
   def __init__(self, makefilename, target='all'):
-    self.target = target
     self.targets = {}
     self.variables = {}
     self.parse(makefilename)
