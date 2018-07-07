@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 
+DEBUG = False
+
 import time
 import os
 from subprocess import PIPE, CalledProcessError, check_output
-watchdog_imported = False
+WATCHDOG_IMPORTED = False
 try:
   from watchdog.observers import Observer
   from watchdog.events import FileSystemEventHandler
-  watchdog_imported = True
+  WATCHDOG_IMPORTED = True
 except ImportError:
   pass
 
@@ -15,10 +17,9 @@ def printmsg(msg):
   print('automake: %s' % msg)
 
 class AutomakeEventHandler(FileSystemEventHandler):
-  def __init__(self, makefilename, target, debug):
+  def __init__(self, makefilename, target):
     self.makefilename = makefilename
     self.target = target
-    self.debug = debug
     self.init()
 
   def __call__(self):
@@ -30,30 +31,30 @@ class AutomakeEventHandler(FileSystemEventHandler):
       printmsg('Failure: %s' % e)
 
   def on_any_event(self, event):
-    if self.debug:
+    if DEBUG:
       printmsg(event)
     if self.is_watched(event.src_path):
       self()
     elif self.is_makefile(event.src_path):
-      if self.debug:
+      if DEBUG:
         printmsg('Makefile change detected.')
       self.init()
 
   def init(self):
-    parser = MakefileParser(self.makefilename, self.target, debug=self.debug)
+    parser = MakefileParser(self.makefilename, self.target)
     self.watched_files = self.get_files(parser.prerequisites)
     self.watched_dirs = self.get_dirs(parser.prerequisites)
     self()
 
   def get_files(self, path_list):
     files = [p for p in path_list if os.path.isfile(p)]
-    if files and self.debug:
+    if files and DEBUG:
       printmsg('Watched files: %s' % ', '.join(files))
     return files
 
   def get_dirs(self, path_list):
     dirs = [p for p in path_list if os.path.isdir(p)]
-    if dirs and self.debug:
+    if dirs and DEBUG:
       printmsg('Watched directories : %s' % ', '.join(dirs))
     return dirs
 
@@ -69,11 +70,10 @@ class AutomakeEventHandler(FileSystemEventHandler):
 
 
 class MakefileParser(object):
-  def __init__(self, makefilename, target='all', debug=False):
+  def __init__(self, makefilename, target='all'):
     self.target = target
     self.targets = {}
     self.variables = {}
-    self.debug = debug
     self.parse(makefilename)
     if target not in self.targets:
       raise RuntimeError('Target %s not found.' % target)
@@ -90,13 +90,8 @@ class MakefileParser(object):
           if '=' in line:
             k, v = line.split('=')
             self.variables[k] = v.strip()
-      if self.debug:
-        if self.targets:
-          printmsg('Parsed targets:')
-        for target, prerequisites in self.targets.items():
-          printmsg('  %s: %s' % (target, ', '.join(prerequisites)))
-        if self.variables:
-          printmsg('Parsed variables: %s' % ', '.join(self.variables))
+      if DEBUG:
+        self.debug_print(print_variables=True)
     else:
       raise RuntimeError('%s not found.' % filename)
 
@@ -105,6 +100,8 @@ class MakefileParser(object):
       for i in range(len(prerequisites)):
         for varname, value in self.variables.items():
           self.targets[target][i] = self.targets[target][i].replace('${%s}' % varname, value)
+    if DEBUG:
+      self.debug_print()
 
   def resolve_dependencies(self, target):
     prerequisites = []
@@ -115,9 +112,24 @@ class MakefileParser(object):
         prerequisites.append(p)
     return prerequisites
 
+  def debug_print(self, print_variables=False):
+    if self.targets:
+      printmsg('Targets:')
+      for target, prerequisites in self.targets.items():
+        printmsg('  %s: %s' % (target, ', '.join(prerequisites)))
+    else:
+      printmsg('No targets.')
+    if print_variables:
+      if self.variables:
+        printmsg('Variables:')
+        for varname, value in self.variables.items():
+          printmsg('  %s: %s' % (varname, value))
+      else:
+        printmsg('No variables.')
+
 
 def automake(args):
-  event_handler = AutomakeEventHandler(args.makefilename, args.target, args.debug)
+  event_handler = AutomakeEventHandler(args.makefilename, args.target)
   observer = Observer()
   observer.schedule(event_handler, '.', recursive=True)
   observer.start()
@@ -132,10 +144,11 @@ if __name__ == '__main__':
   import argparse
   parser = argparse.ArgumentParser(description='Runs make automatically on source files change.')
   parser.add_argument('--makefilename', default='Makefile', help='Name of the makefile (default "%(default)s")')
-  parser.add_argument('--target', default='all', help='make target (default "%(default)s")')
+  parser.add_argument('--target', default='all', help='Make target (default "%(default)s")')
   parser.add_argument('--debug', action='store_true', help='Run in debug mode.')
   args = parser.parse_args()
-  if watchdog_imported:
+  DEBUG = args.debug
+  if WATCHDOG_IMPORTED:
     try:
       automake(args)
     except RuntimeError as e:
