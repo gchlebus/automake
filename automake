@@ -66,8 +66,9 @@ class AutomakeEventHandler(FileSystemEventHandler):
     return ret
 
   def is_makefile(self, src_path):
-    return os.path.samefile(self.makefilename, src_path)
-
+    if os.path.exists(src_path):
+      return os.path.samefile(self.makefilename, src_path)
+    return False
 
 class MakefileParser(object):
   def __init__(self, makefilename, target='all'):
