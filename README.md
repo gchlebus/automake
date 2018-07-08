@@ -13,14 +13,15 @@ install automake /usr/local/bin
 
 ## Usage
 ```
-usage: automake [-h] [--makefilename MAKEFILENAME] [--target TARGET] [--debug]
+usage: automake [-h] [-f FILENAME] [-t TARGET] [-d]
 
 Runs make automatically on source files change.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --makefilename MAKEFILENAME
-                        Name of the makefile (default "Makefile")
-  --target TARGET       Make target (default "all")
-  --debug               Run in debug mode.
+  -f FILENAME, --filename FILENAME, --makefilename FILENAME
+                        Name of the makefile (default "Makefile").
+  -t TARGET, --target TARGET
+                        Make target (default "all").
+  -d, --debug           Run in debug mode.
 ```

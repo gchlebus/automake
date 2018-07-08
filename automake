@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 DEBUG = False
+STOP_AFTER_NSEC = 0
 
 import time
 import os
@@ -17,13 +18,13 @@ def printmsg(msg):
   print('automake: %s' % msg)
 
 class AutomakeEventHandler(FileSystemEventHandler):
-  def __init__(self, makefilename, target):
-    self.makefilename = makefilename
+  def __init__(self, filename, target):
+    self.filename = filename
     self.target = target
     self.init()
 
   def __call__(self):
-    args = ['make', self.target]
+    args = ['make', '-f', self.filename, self.target]
     printmsg('Calling: %s' % ' '.join(args))
     try:
       check_output(args, stdin=PIPE)
@@ -41,7 +42,7 @@ class AutomakeEventHandler(FileSystemEventHandler):
       self.init()
 
   def init(self):
-    parser = MakefileParser(self.makefilename, self.target)
+    parser = MakefileParser(self.filename, self.target)
     self.watched_files = self.get_files(parser.prerequisites)
     self.watched_dirs = self.get_dirs(parser.prerequisites)
     self()
@@ -67,14 +68,14 @@ class AutomakeEventHandler(FileSystemEventHandler):
 
   def is_makefile(self, src_path):
     if os.path.exists(src_path):
-      return os.path.samefile(self.makefilename, src_path)
+      return os.path.samefile(self.filename, src_path)
     return False
 
 class MakefileParser(object):
-  def __init__(self, makefilename, target='all'):
+  def __init__(self, filename, target='all'):
     self.targets = {}
     self.variables = {}
-    self.parse(makefilename)
+    self.parse(filename)
     if target not in self.targets:
       raise RuntimeError('Target %s not found.' % target)
     self.expand_variables()
@@ -128,29 +129,42 @@ class MakefileParser(object):
         printmsg('No variables.')
 
 
-def automake(args):
-  event_handler = AutomakeEventHandler(args.makefilename, args.target)
+def automake(filename='Makefile', target='all', debug=False):
+  global DEBUG
+  DEBUG = debug
+
+  event_handler = AutomakeEventHandler(filename, target)
   observer = Observer()
   observer.schedule(event_handler, '.', recursive=True)
   observer.start()
   try:
-      while True:
-          time.sleep(1)
+    loop()
   except KeyboardInterrupt:
-      observer.stop()
+    printmsg('Stop requested.')
+  finally:
+    observer.stop()
   observer.join()
+
+def loop():
+  global STOP_AFTER_NSEC
+  if STOP_AFTER_NSEC:
+    while STOP_AFTER_NSEC > 0:
+      time.sleep(1)
+      STOP_AFTER_NSEC -= 1
+  else:
+    while True:
+      time.sleep(1)
 
 if __name__ == '__main__':
   import argparse
   parser = argparse.ArgumentParser(description='Runs make automatically on source files change.')
-  parser.add_argument('--makefilename', default='Makefile', help='Name of the makefile (default "%(default)s")')
-  parser.add_argument('--target', default='all', help='Make target (default "%(default)s")')
-  parser.add_argument('--debug', action='store_true', help='Run in debug mode.')
+  parser.add_argument('-f', '--filename', '--makefilename', default='Makefile', help='Name of the makefile (default "%(default)s").')
+  parser.add_argument('-t', '--target', default='all', help='Make target (default "%(default)s").')
+  parser.add_argument('-d', '--debug', action='store_true', help='Run in debug mode.')
   args = parser.parse_args()
-  DEBUG = args.debug
   if WATCHDOG_IMPORTED:
     try:
-      automake(args)
+      automake(args.filename, args.target, args.debug)
     except RuntimeError as e:
       printmsg(e)
   else:
