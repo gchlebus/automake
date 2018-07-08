@@ -1,4 +1,6 @@
 # automake
+---
+[![Build Status](https://travis-ci.com/gchlebus/automake.svg?branch=master)](https://travis-ci.com/gchlebus/automake)
 Run make automatically on sources change.
 
 ## Installation instructions
