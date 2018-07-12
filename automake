@@ -56,7 +56,7 @@ class AutomakeEventHandler(FileSystemEventHandler):
   def get_dirs(self, path_list):
     dirs = [p for p in path_list if os.path.isdir(p)]
     if dirs and DEBUG:
-      printmsg('Watched directories : %s' % ', '.join(dirs))
+      printmsg('Watched directories: %s' % ', '.join(dirs))
     return dirs
 
   def is_watched(self, src_path):
@@ -92,6 +92,7 @@ class MakefileParser(object):
             k, v = line.split('=')
             self.variables[k] = v.strip()
       if DEBUG:
+        printmsg('parse()')
         self.debug_print(print_variables=True)
     else:
       raise RuntimeError('%s not found.' % filename)
@@ -102,6 +103,7 @@ class MakefileParser(object):
         for varname, value in self.variables.items():
           self.targets[target][i] = self.targets[target][i].replace('${%s}' % varname, value)
     if DEBUG:
+      printmsg('expand_variables()')
       self.debug_print()
 
   def resolve_dependencies(self, target):
@@ -124,7 +126,7 @@ class MakefileParser(object):
       if self.variables:
         printmsg('Variables:')
         for varname, value in self.variables.items():
-          printmsg('  %s: %s' % (varname, value))
+          printmsg('  %s=%s' % (varname, value))
       else:
         printmsg('No variables.')
 
@@ -157,10 +159,10 @@ def loop():
 
 if __name__ == '__main__':
   import argparse
-  parser = argparse.ArgumentParser(description='Runs make automatically on source files change.')
-  parser.add_argument('-f', '--filename', '--makefilename', default='Makefile', help='Name of the makefile (default "%(default)s").')
-  parser.add_argument('-t', '--target', default='all', help='Make target (default "%(default)s").')
-  parser.add_argument('-d', '--debug', action='store_true', help='Run in debug mode.')
+  parser = argparse.ArgumentParser(description='Run make automatically on source files change.')
+  parser.add_argument('-f', '--filename', '--makefilename', default='Makefile', help='name of the makefile (default "%(default)s")')
+  parser.add_argument('-t', '--target', default='all', help='make target (default "%(default)s")')
+  parser.add_argument('-d', '--debug', action='store_true', help='toggle debug mode')
   args = parser.parse_args()
   if WATCHDOG_IMPORTED:
     try:
