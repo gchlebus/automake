@@ -6,7 +6,8 @@ Run make automatically on sources change.
 
 ## Installation instructions
 ```
-cd clone_directory
+git clone https://github.com/gchlebus/automake.git
+cd automake
 pip install -r requirements.txt
 install automake /usr/local/bin
 ```
