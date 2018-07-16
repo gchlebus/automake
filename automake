@@ -89,8 +89,8 @@ class MakefileParser(object):
             target, prerequisites = line.split(':')
             self.targets[target.strip()] = prerequisites.strip().split()
           if '=' in line:
-            k, v = line.split('=')
-            self.variables[k] = v.strip()
+            k, v = line.split('=', 1)
+            self.variables[k.strip()] = v.strip()
       if DEBUG:
         printmsg('parse()')
         self.debug_print(print_variables=True)

@@ -1,0 +1,5 @@
+CC = g++
+CFLAGS= -g -Wall -std=c++0x
+
+all :
+    echo hej

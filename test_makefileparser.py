@@ -20,3 +20,10 @@ def test_expand_variables():
 def test_dependencies():
   parser = automake.MakefileParser('test_makefiles/Makefile3')
   assert parser.prerequisites == 'foo1 foo2 foo3'.split()
+
+def test_variables():
+  parser = automake.MakefileParser('test_makefiles/test_variables')
+  variables = parser.variables
+  assert variables['CC'] == 'g++'
+  assert variables['CFLAGS'] == '-g -Wall -std=c++0x'
+  
