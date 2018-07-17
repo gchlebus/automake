@@ -5,6 +5,7 @@ STOP_AFTER_NSEC = 0
 
 import time
 import os
+import sys
 from subprocess import PIPE, CalledProcessError, check_output
 WATCHDOG_IMPORTED = False
 try:
@@ -16,6 +17,12 @@ except ImportError:
 
 def printmsg(msg):
   print('automake: %s' % msg)
+
+def notify(msg):
+  if sys.platform == 'darwin':
+    os.system("""
+    osascript -e 'display notification "%s" with title "%s"'
+    """ % (msg, 'automake'))
 
 class AutomakeEventHandler(FileSystemEventHandler):
   def __init__(self, filename, target):
@@ -30,6 +37,7 @@ class AutomakeEventHandler(FileSystemEventHandler):
       check_output(args, stdin=PIPE)
     except CalledProcessError as e:
       printmsg('Failure: %s' % e)
+      notify("Failed")
 
   def on_any_event(self, event):
     if DEBUG:
