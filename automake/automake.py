@@ -3,8 +3,8 @@
 __author__ = 'gchlebus'
 
 from watchdog.observers import Observer
-from event_handler import AutomakeEventHandler
-from utils import printmsg
+from .event_handler import AutomakeEventHandler
+from .utils import printmsg
 import time
 
 STOP_AFTER_NSEC = 0

@@ -3,8 +3,8 @@
 __author__ = 'gchlebus'
 
 import os
-from utils import printmsg, notify
-from parser import MakefileParser
+from .utils import printmsg, notify
+from .parser import MakefileParser
 from subprocess import PIPE, CalledProcessError, check_output
 from watchdog.events import FileSystemEventHandler
 

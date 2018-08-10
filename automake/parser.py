@@ -4,7 +4,7 @@ __author__ = 'gchlebus'
 
 
 import os
-from utils import printmsg
+from .utils import printmsg
 
 class MakefileParser(object):
   def __init__(self, filename, target='all', debug=False):
