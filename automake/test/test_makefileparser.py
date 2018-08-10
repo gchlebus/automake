@@ -2,28 +2,33 @@
 __author__ = 'gchlebus'
 
 import pytest
-import imp
-automake = imp.load_source('automake', 'automake')
+import os
+from ..parser import MakefileParser
+
+TEST_DIR = 'automake/test/makefiles'
 
 def test_target_not_found():
   with pytest.raises(RuntimeError):
-    parser = automake.MakefileParser('test_makefiles/Makefile1', 'asd')
+    parser = MakefileParser(_get_filepath('Makefile1'), 'asd')
 
 def test_simple_makefile():
-  parser = automake.MakefileParser('test_makefiles/Makefile1')
+  parser = MakefileParser(_get_filepath('Makefile1'))
   assert parser.prerequisites == 'foo1 foo2'.split()
 
 def test_expand_variables():
-  parser = automake.MakefileParser('test_makefiles/Makefile2')
+  parser = MakefileParser(_get_filepath('Makefile2'))
   assert parser.prerequisites == 'foo bar'.split()
 
 def test_dependencies():
-  parser = automake.MakefileParser('test_makefiles/Makefile3')
+  parser = MakefileParser(_get_filepath('Makefile3'))
   assert parser.prerequisites == 'foo1 foo2 foo3'.split()
 
 def test_variables():
-  parser = automake.MakefileParser('test_makefiles/test_variables')
+  parser = MakefileParser(_get_filepath('test_variables'))
   variables = parser.variables
   assert variables['CC'] == 'g++'
   assert variables['CFLAGS'] == '-g -Wall -std=c++0x'
-  
+
+def _get_filepath(filename):
+  return os.path.join(TEST_DIR, filename)
+

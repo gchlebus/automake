@@ -7,10 +7,10 @@ import imp
 import contextlib
 from threading import Thread
 import time
-automake = imp.load_source('automake', 'automake')
+from .. import automake
 
 TMP_FILENAME = 'tmp_file'
-TEST_MAKEFILES_DIR = 'test_makefiles'
+TEST_MAKEFILES_DIR = 'automake/test/makefiles'
 
 @contextlib.contextmanager
 def changedir(dirpath):
@@ -63,3 +63,4 @@ def test_sourcefilechange():
 
 def touch_file(filename):
   os.utime(filename, None)
+  
