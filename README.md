@@ -6,9 +6,7 @@ Run make automatically on sources change.
 
 ## Installation instructions
 ```
-git clone https://github.com/gchlebus/automake.git
-cd automake
-pip install .
+pip install automake
 ```
 
 ## Usage
