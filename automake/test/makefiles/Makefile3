@@ -1,8 +1,0 @@
-all : foo1 dep1
-  echo foo
-
-dep1: foo2 dep2
-  echo foo
-
-dep2: foo3
-  echo foo

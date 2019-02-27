@@ -1,2 +1,0 @@
-all : source_file
-	echo test >> tmp_file

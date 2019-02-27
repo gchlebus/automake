@@ -1,5 +1,0 @@
-VAR1=foo
-VAR2=bar
-
-all : ${VAR1} ${VAR2}
-  echo foo

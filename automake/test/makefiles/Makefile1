@@ -1,2 +1,0 @@
-all : foo1 foo2
-  echo foo
