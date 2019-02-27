@@ -5,10 +5,10 @@ __author__ = 'gchlebus'
 from setuptools import setup, find_packages
 
 setup(
-  name='automake',
+  name='makeauto',
   version='0.1.3',
   author='Grzegorz Chlebus',
-  url='https://github.com/gchlebus/automake',
+  url='https://github.com/gchlebus/makeauto',
   license='BSD 3-Clause',
   author_email='gchlebus@gmail.com',
   description=('Run make automatically on sources change.'),
@@ -18,7 +18,7 @@ setup(
   install_requires=['click', 'watchdog'],
   entry_points='''
     [console_scripts]
-    automake=automake.cli:cli
+    makeauto=makeauto.cli:cli
   ''',
   classifiers=[
     'Development Status :: 4 - Beta',

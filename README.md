@@ -1,17 +1,17 @@
-# automake
-[![Build Status](https://travis-ci.com/gchlebus/automake.svg?branch=master)](https://travis-ci.com/gchlebus/automake)
+# makeauto
+[![Build Status](https://travis-ci.com/gchlebus/automake.svg?branch=master)](https://travis-ci.com/gchlebus/makeauto)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 Run make automatically on sources change.
 
 ## Installation instructions
 ```
-pip install automake
+pip install makeauto
 ```
 
 ## Usage
 ```
-Usage: automake [OPTIONS]
+Usage: makeauto [OPTIONS]
 
   Run make automatically on source files change.
 
